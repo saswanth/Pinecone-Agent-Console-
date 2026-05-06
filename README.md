@@ -1,15 +1,17 @@
 # Pinecone Document Agent
 
 This project provides a simple AI agent that:
+
 - reads files from `docs/`
 - supports `.pdf` and `.docx` files
 - chunks document text
 - creates embeddings with Pinecone Inference
 - stores vectors in your Pinecone index
+- supports document delete/update operations in Pinecone
 - lets you run semantic queries over ingested content
 - exposes a local REST API for upload + ingest + query
 - includes retry with exponential backoff and structured logging
-- includes a local dashboard with drag-and-drop upload, query results, and file analytics
+- includes a local dashboard with drag-and-drop upload, query results, file analytics, and per-file charts
 
 ## 1) Setup
 
@@ -19,13 +21,13 @@ This project provides a simple AI agent that:
 npm install
 ```
 
-2. Create your environment file:
+1. Create your environment file:
 
 ```bash
 copy .env.example .env
 ```
 
-3. Open `.env` and set values:
+1. Open `.env` and set values:
 
 ```env
 PINECONE_API_KEY=your_pinecone_api_key_here
@@ -43,6 +45,7 @@ RETRY_BASE_DELAY_MS=500
 ## 2) Add Documents
 
 Place your documents in the `docs/` folder. Supported file types:
+
 - `.txt`
 - `.md`
 - `.json`
@@ -70,6 +73,7 @@ npm run api
 ```
 
 Local links:
+
 - `http://localhost:3000/health`
 - `http://localhost:3000`
 
@@ -81,40 +85,77 @@ Local links:
 curl http://localhost:3000/health
 ```
 
-2. Ingest from local docs directory
+1. Ingest from local docs directory
 
 ```bash
 curl -X POST http://localhost:3000/ingest \
-	-H "Content-Type: application/json" \
-	-d "{\"docsDir\":\"./docs\"}"
+  -H "Content-Type: application/json" \
+  -d "{\"docsDir\":\"./docs\"}"
 ```
 
-3. Upload and ingest files directly
+1. Upload and ingest files directly
 
 ```bash
 curl -X POST http://localhost:3000/upload-ingest \
-	-F "files=@docs/sample.txt" \
-	-F "files=@docs/your-file.pdf"
+  -F "files=@docs/sample.txt" \
+  -F "files=@docs/your-file.pdf"
 ```
 
-4. Query
+1. Query
 
 ```bash
 curl -X POST http://localhost:3000/query \
-	-H "Content-Type: application/json" \
-	-d "{\"text\":\"What is in my uploaded documents?\"}"
+  -H "Content-Type: application/json" \
+  -d "{\"text\":\"What is in my uploaded documents?\"}"
 ```
 
-5. File analytics
+1. File analytics
 
 ```bash
 curl "http://localhost:3000/analytics?docsDir=./docs"
 ```
 
 The dashboard at `http://localhost:3000` now includes:
+
 - drag-and-drop upload
 - directory analytics totals
+- per-file analytics charts (chunks and words)
 - query results table
+- document delete and update controls
+
+1. Delete a document by source
+
+```bash
+curl -X DELETE http://localhost:3000/document \
+  -H "Content-Type: application/json" \
+  -d "{\"source\":\"docs\\sample.txt\"}"
+```
+
+1. Update a document by source with replacement file
+
+```bash
+curl -X PUT http://localhost:3000/document \
+  -F "source=docs\\sample.txt" \
+  -F "file=@docs/sample.txt"
+```
+
+## Render Deployment
+
+The repo includes `render.yaml` for environment-based deployment.
+
+1. Push this repository to GitHub.
+1. In Render, create a new Blueprint and select this repository.
+1. Set required secret environment variables in Render:
+
+- `PINECONE_API_KEY`
+- `PINECONE_INDEX`
+
+1. Deploy. Render will run:
+
+- build: `npm install`
+- start: `npm run start`
+
+After deploy, your service URL will host the dashboard and API.
 
 ## Security Note
 

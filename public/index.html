@@ -206,6 +206,59 @@
         gap: 12px;
       }
 
+      .chart-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .chart-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+        padding: 14px;
+      }
+
+      .bars {
+        display: grid;
+        gap: 10px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: minmax(110px, 180px) 1fr 64px;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .bar-label {
+        font-size: 0.84rem;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bar-track {
+        height: 10px;
+        border-radius: 999px;
+        background: #eef3f2;
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #0f766e, #22c55e);
+      }
+
+      .bar-value {
+        font-size: 0.82rem;
+        text-align: right;
+        color: var(--muted);
+      }
+
       .stat {
         border: 1px solid var(--line);
         border-radius: 14px;
@@ -267,6 +320,10 @@
       }
 
       @media (max-width: 900px) {
+        .chart-grid {
+          grid-template-columns: 1fr;
+        }
+
         .stats {
           grid-template-columns: repeat(2, 1fr);
         }
@@ -343,6 +400,50 @@
               <div class="stat-label">Estimated Chunks</div>
               <div id="statChunks" class="stat-value">0</div>
             </div>
+          </div>
+
+          <div class="chart-grid">
+            <div class="chart-card">
+              <h3 style="margin: 0 0 10px">Per-file Estimated Chunks</h3>
+              <div id="fileChunkBars" class="bars"></div>
+            </div>
+            <div class="chart-card">
+              <h3 style="margin: 0 0 10px">Per-file Words</h3>
+              <div id="fileWordBars" class="bars"></div>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin-top: 16px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Type</th>
+                  <th>Bytes</th>
+                  <th>Words</th>
+                  <th>Chunks</th>
+                </tr>
+              </thead>
+              <tbody id="analyticsFilesBody">
+                <tr>
+                  <td colspan="5" class="muted">No analytics data yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card span-12">
+          <h2>Document Maintenance</h2>
+          <label for="docSource">Document source</label>
+          <input id="docSource" type="text" placeholder="docs/sample.txt or upload/my-file.pdf" />
+          <div class="row">
+            <button id="deleteDocBtn" class="secondary">Delete /document</button>
+          </div>
+          <label for="updateFile" style="margin-top: 12px">Replacement file for update</label>
+          <input id="updateFile" type="file" />
+          <div class="row">
+            <button id="updateDocBtn">Update /document</button>
           </div>
         </article>
 

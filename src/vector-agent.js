@@ -24,6 +24,14 @@ export const config = {
 
 export const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
+function sanitizeForId(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+export function sourceToIdPrefix(source) {
+  return `${sanitizeForId(source)}__`;
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -172,6 +180,7 @@ async function buildRecords(pc, documents) {
   const records = [];
 
   for (const doc of documents) {
+    const idPrefix = sourceToIdPrefix(doc.source);
     const chunks = chunkText(doc.content, config.chunkSize, config.chunkOverlap);
     if (chunks.length === 0) continue;
 
@@ -179,7 +188,7 @@ async function buildRecords(pc, documents) {
 
     embeddings.forEach((vector, i) => {
       records.push({
-        id: `${doc.source}-${i}`.replace(/[^a-zA-Z0-9_-]/g, '_'),
+        id: `${idPrefix}${i}`,
         values: vector,
         metadata: {
           source: doc.source,
@@ -265,6 +274,69 @@ export async function query(searchText) {
   });
 
   return result.matches || [];
+}
+
+async function listIdsByPrefix(index, prefix) {
+  const ids = [];
+  let paginationToken;
+
+  do {
+    const page = await withRetry('pinecone.listPaginated', async () => {
+      return index.listPaginated({
+        prefix,
+        limit: 100,
+        paginationToken,
+      });
+    });
+
+    const pageIds = (page?.vectors || []).map((item) => item.id).filter(Boolean);
+    ids.push(...pageIds);
+    paginationToken = page?.pagination?.next;
+  } while (paginationToken);
+
+  return ids;
+}
+
+export async function deleteDocumentBySource(source) {
+  validateConfig();
+
+  if (!source || !String(source).trim()) {
+    throw new Error('Missing document source for deletion.');
+  }
+
+  const pc = new Pinecone({ apiKey: config.apiKey });
+  const index = pc.index(config.indexName).namespace(config.namespace);
+  const prefix = sourceToIdPrefix(String(source));
+  const ids = await listIdsByPrefix(index, prefix);
+
+  if (ids.length === 0) {
+    return { source: String(source), deleted: 0 };
+  }
+
+  const batchSize = 1000;
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batch = ids.slice(i, i + batchSize);
+    await withRetry('pinecone.deleteMany', async () => {
+      await index.deleteMany(batch);
+    });
+  }
+
+  return { source: String(source), deleted: ids.length };
+}
+
+export async function updateDocumentBySource(source, content) {
+  if (!source || !String(source).trim()) {
+    throw new Error('Missing document source for update.');
+  }
+
+  const text = String(content || '').trim();
+  if (!text) {
+    throw new Error('Document content cannot be empty for update.');
+  }
+
+  const deletion = await deleteDocumentBySource(source);
+  const ingestion = await ingestDocuments([{ source: String(source), content: text }]);
+  return { source: String(source), deleted: deletion.deleted, upserted: ingestion.upserted };
 }
 
 async function main() {

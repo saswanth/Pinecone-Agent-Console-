@@ -8,12 +8,14 @@ import dotenv from 'dotenv';
 import {
   chunkText,
   config,
+  deleteDocumentBySource,
   listSupportedFiles,
   logger,
   ingestDocuments,
   ingestFromDirectory,
   parseDocumentText,
   query,
+  updateDocumentBySource,
   validateConfig,
 } from './vector-agent.js';
 
@@ -62,6 +64,27 @@ function configState() {
 
 function sanitizeName(fileName = 'uploaded_file') {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+async function parseUploadFile(file) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (!['.txt', '.md', '.json', '.csv', '.log', '.pdf', '.docx'].includes(ext)) {
+    return null;
+  }
+
+  if (ext === '.pdf') {
+    const pdfParse = (await import('pdf-parse')).default;
+    const parsed = await pdfParse(file.buffer);
+    return { ext, content: parsed.text || '' };
+  }
+
+  if (ext === '.docx') {
+    const mammoth = (await import('mammoth')).default;
+    const parsed = await mammoth.extractRawText({ buffer: file.buffer });
+    return { ext, content: parsed.value || '' };
+  }
+
+  return { ext, content: file.buffer.toString('utf8') };
 }
 
 async function fileStatsFromDisk(filePath, rootDir) {
@@ -178,28 +201,16 @@ app.post('/upload-ingest', upload.array('files', 20), async (req, res) => {
       return;
     }
 
-    const supported = ['.txt', '.md', '.json', '.csv', '.log', '.pdf', '.docx'];
     const docs = [];
     const analyticsFiles = [];
 
     for (const file of files) {
-      const ext = path.extname(file.originalname || '').toLowerCase();
-      if (!supported.includes(ext)) {
+      const parsedUpload = await parseUploadFile(file);
+      if (!parsedUpload) {
         continue;
       }
 
-      let content = '';
-      if (ext === '.pdf') {
-        const pdfParse = (await import('pdf-parse')).default;
-        const parsed = await pdfParse(file.buffer);
-        content = parsed.text || '';
-      } else if (ext === '.docx') {
-        const mammoth = (await import('mammoth')).default;
-        const parsed = await mammoth.extractRawText({ buffer: file.buffer });
-        content = parsed.value || '';
-      } else {
-        content = file.buffer.toString('utf8');
-      }
+      const content = parsedUpload.content;
 
       docs.push({
         source: `upload/${sanitizeName(file.originalname)}`,
@@ -218,6 +229,48 @@ app.post('/upload-ingest', upload.array('files', 20), async (req, res) => {
     });
   } catch (error) {
     req.log.error({ error: error.message }, 'Upload ingestion failed');
+    res.status(400).json({ ok: false, error: error.message });
+  }
+});
+
+app.delete('/document', async (req, res) => {
+  try {
+    validateConfig();
+    const source = req.body?.source;
+    if (!source || !String(source).trim()) {
+      res.status(400).json({ ok: false, error: 'Missing required body field: source' });
+      return;
+    }
+
+    const result = await deleteDocumentBySource(String(source));
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    req.log.error({ error: error.message }, 'Delete document failed');
+    res.status(400).json({ ok: false, error: error.message });
+  }
+});
+
+app.put('/document', upload.single('file'), async (req, res) => {
+  try {
+    validateConfig();
+
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ ok: false, error: 'Missing upload file. Use multipart/form-data with field name file.' });
+      return;
+    }
+
+    const parsedUpload = await parseUploadFile(file);
+    if (!parsedUpload) {
+      res.status(400).json({ ok: false, error: 'Unsupported file type for update.' });
+      return;
+    }
+
+    const source = String(req.body?.source || `upload/${sanitizeName(file.originalname)}`);
+    const result = await updateDocumentBySource(source, parsedUpload.content);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    req.log.error({ error: error.message }, 'Update document failed');
     res.status(400).json({ ok: false, error: error.message });
   }
 });

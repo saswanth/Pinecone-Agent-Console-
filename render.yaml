@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: pinecone-agent-console
+    runtime: node
+    plan: free
+    branch: master
+    buildCommand: npm install
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX
+        sync: false
+      - key: PINECONE_NAMESPACE
+        value: default
+      - key: EMBEDDING_MODEL
+        value: multilingual-e5-large
+      - key: DOCS_DIR
+        value: ./docs
+      - key: TOP_K
+        value: 5
+      - key: MAX_UPLOAD_MB
+        value: 10
+      - key: RETRY_ATTEMPTS
+        value: 3
+      - key: RETRY_BASE_DELAY_MS
+        value: 500

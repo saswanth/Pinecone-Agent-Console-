@@ -10,6 +10,21 @@ const statFiles = document.getElementById('statFiles');
 const statBytes = document.getElementById('statBytes');
 const statWords = document.getElementById('statWords');
 const statChunks = document.getElementById('statChunks');
+const analyticsFilesBody = document.getElementById('analyticsFilesBody');
+const fileChunkBars = document.getElementById('fileChunkBars');
+const fileWordBars = document.getElementById('fileWordBars');
+
+const docSourceInput = document.getElementById('docSource');
+const updateFileInput = document.getElementById('updateFile');
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
 function print(data) {
   output.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
@@ -21,10 +36,62 @@ function formatNumber(value) {
 
 function updateAnalytics(analytics) {
   const totals = analytics?.totals || {};
+  const files = analytics?.files || [];
   statFiles.textContent = formatNumber(totals.files);
   statBytes.textContent = formatNumber(totals.bytes);
   statWords.textContent = formatNumber(totals.words);
   statChunks.textContent = formatNumber(totals.estimatedChunks);
+  renderAnalyticsTable(files);
+  renderBars(fileChunkBars, files, 'estimatedChunks');
+  renderBars(fileWordBars, files, 'words');
+}
+
+function renderAnalyticsTable(files = []) {
+  if (!files.length) {
+    analyticsFilesBody.innerHTML = '<tr><td colspan="5" class="muted">No analytics data yet.</td></tr>';
+    return;
+  }
+
+  analyticsFilesBody.innerHTML = files
+    .map((file) => {
+      return `
+        <tr>
+          <td class="mono">${escapeHtml(file.source || 'unknown')}</td>
+          <td class="mono">${escapeHtml(file.extension || 'n/a')}</td>
+          <td class="mono">${formatNumber(file.bytes)}</td>
+          <td class="mono">${formatNumber(file.words)}</td>
+          <td class="mono">${formatNumber(file.estimatedChunks)}</td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+function renderBars(container, files = [], metricKey) {
+  const topFiles = [...files]
+    .sort((a, b) => Number(b?.[metricKey] || 0) - Number(a?.[metricKey] || 0))
+    .slice(0, 8);
+
+  if (!topFiles.length) {
+    container.innerHTML = '<div class="muted">No data.</div>';
+    return;
+  }
+
+  const maxValue = Math.max(...topFiles.map((item) => Number(item?.[metricKey] || 0)), 1);
+  container.innerHTML = topFiles
+    .map((item) => {
+      const source = item?.relativeToDocs || item?.source || 'unknown';
+      const value = Number(item?.[metricKey] || 0);
+      const width = Math.max(2, Math.round((value / maxValue) * 100));
+      return `
+        <div class="bar-row">
+          <div class="bar-label" title="${escapeHtml(source)}">${escapeHtml(source)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+          <div class="bar-value mono">${formatNumber(value)}</div>
+        </div>
+      `;
+    })
+    .join('');
 }
 
 function renderResults(matches = []) {
@@ -142,6 +209,62 @@ document.getElementById('analyticsBtn').addEventListener('click', async () => {
   print('Refreshing analytics...');
   const data = await refreshAnalytics();
   if (data) print(data);
+});
+
+document.getElementById('deleteDocBtn').addEventListener('click', async () => {
+  try {
+    const source = docSourceInput.value.trim();
+    if (!source) {
+      throw new Error('Please enter a document source to delete.');
+    }
+
+    print(`Deleting ${source} ...`);
+    const data = await fetch('/document', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source }),
+    }).then(async (res) => {
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'Delete failed');
+      return body;
+    });
+
+    await refreshAnalytics();
+    print(data);
+  } catch (error) {
+    print({ ok: false, error: error.message });
+  }
+});
+
+document.getElementById('updateDocBtn').addEventListener('click', async () => {
+  try {
+    const source = docSourceInput.value.trim();
+    const file = updateFileInput.files?.[0];
+    if (!file) {
+      throw new Error('Please choose a replacement file for update.');
+    }
+
+    print('Updating document...');
+    const form = new FormData();
+    form.append('file', file);
+    if (source) {
+      form.append('source', source);
+    }
+
+    const data = await fetch('/document', {
+      method: 'PUT',
+      body: form,
+    }).then(async (res) => {
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || 'Update failed');
+      return body;
+    });
+
+    await refreshAnalytics();
+    print(data);
+  } catch (error) {
+    print({ ok: false, error: error.message });
+  }
 });
 
 filesInput.addEventListener('change', () => {
