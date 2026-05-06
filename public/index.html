@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pinecone Agent Console</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+      :root {
+        --bg: #f3efe6;
+        --card: #fffdf8;
+        --ink: #1a1a1a;
+        --muted: #615f58;
+        --line: #d5cfc2;
+        --accent: #0f766e;
+        --accent-soft: #d1fae5;
+        --danger: #b91c1c;
+        --radius: 18px;
+        --shadow: 0 12px 30px rgba(18, 28, 45, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Space Grotesk', sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 15%, #fcd9ae 0%, transparent 30%),
+          radial-gradient(circle at 85% 85%, #b8f2e6 0%, transparent 30%),
+          var(--bg);
+      }
+
+      .wrap {
+        width: min(1100px, 92vw);
+        margin: 28px auto;
+        display: grid;
+        gap: 18px;
+      }
+
+      .hero {
+        background: linear-gradient(145deg, #fffaf1, #e8fbf8);
+        border: 1px solid var(--line);
+        border-radius: calc(var(--radius) + 8px);
+        box-shadow: var(--shadow);
+        padding: 24px;
+        animation: rise 450ms ease-out both;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+
+      .sub {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 18px;
+        animation: rise 550ms ease-out both;
+      }
+
+      .card:nth-child(2) {
+        animation-delay: 80ms;
+      }
+
+      .card:nth-child(3) {
+        animation-delay: 140ms;
+      }
+
+      .span-6 { grid-column: span 6; }
+      .span-4 { grid-column: span 4; }
+      .span-12 { grid-column: span 12; }
+
+      label {
+        display: block;
+        font-size: 0.92rem;
+        margin-bottom: 7px;
+        color: var(--muted);
+      }
+
+      input[type='text'],
+      textarea,
+      input[type='file'] {
+        width: 100%;
+        border: 1px solid #c7c2b8;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px 12px;
+        font: inherit;
+        margin-bottom: 12px;
+      }
+
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: none;
+        background: var(--accent);
+        color: #fff;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font: 600 0.95rem 'IBM Plex Mono', monospace;
+        cursor: pointer;
+        transition: transform 140ms ease, filter 140ms ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.05);
+      }
+
+      button.secondary {
+        background: #1f2937;
+      }
+
+      button.ghost {
+        background: #e7eceb;
+        color: #142321;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.84rem;
+        color: var(--muted);
+        background: #fff;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--danger);
+      }
+
+      .dot.ready {
+        background: #0f9d58;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #101418;
+        color: #cde8ff;
+        border-radius: 12px;
+        padding: 14px;
+        font: 0.86rem/1.4 'IBM Plex Mono', monospace;
+        max-height: 360px;
+        overflow: auto;
+      }
+
+      .dropzone {
+        border: 1.5px dashed #98a6a3;
+        border-radius: 14px;
+        padding: 20px;
+        background: linear-gradient(180deg, #ffffff, #f4fbfa);
+        text-align: center;
+        margin-bottom: 12px;
+        transition: border-color 140ms ease, transform 140ms ease, background 140ms ease;
+      }
+
+      .dropzone.dragover {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        transform: translateY(-1px);
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        background: #fff;
+      }
+
+      .stat-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .stat-value {
+        margin-top: 6px;
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.94rem;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .table-wrap {
+        overflow: auto;
+      }
+
+      .mono {
+        font-family: 'IBM Plex Mono', monospace;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 900px) {
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .span-4,
+        .span-6,
+        .span-12 {
+          grid-column: span 12;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .stats {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero">
+        <h1>Pinecone Agent Console</h1>
+        <p class="sub">Upload documents, ingest folders, and run vector search from one local dashboard.</p>
+      </section>
+
+      <section class="grid">
+        <article class="card span-12">
+          <div class="row" style="justify-content: space-between; align-items: center">
+            <h2 style="margin: 0">Service Health</h2>
+            <div class="pill">
+              <span id="healthDot" class="dot"></span>
+              <span id="healthText">Checking...</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card span-6">
+          <h2>Ingest Local Folder</h2>
+          <label for="docsDir">Docs directory</label>
+          <input id="docsDir" type="text" value="./docs" />
+          <button id="ingestBtn">Run /ingest</button>
+        </article>
+
+        <article class="card span-6">
+          <h2>Upload and Ingest</h2>
+          <div id="dropzone" class="dropzone">
+            <strong>Drop files here</strong>
+            <p class="muted">PDF, DOCX, TXT, MD, JSON, CSV, LOG</p>
+          </div>
+          <label for="files">Select files</label>
+          <input id="files" type="file" multiple />
+          <button id="uploadBtn" class="secondary">Run /upload-ingest</button>
+        </article>
+
+        <article class="card span-12">
+          <div class="row" style="justify-content: space-between; align-items: center">
+            <h2 style="margin: 0">File Analytics</h2>
+            <button id="analyticsBtn" class="ghost">Refresh /analytics</button>
+          </div>
+          <div class="stats" style="margin-top: 14px">
+            <div class="stat">
+              <div class="stat-label">Files</div>
+              <div id="statFiles" class="stat-value">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Bytes</div>
+              <div id="statBytes" class="stat-value">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Words</div>
+              <div id="statWords" class="stat-value">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Estimated Chunks</div>
+              <div id="statChunks" class="stat-value">0</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card span-12">
+          <h2>Query</h2>
+          <label for="queryText">Question</label>
+          <textarea id="queryText" placeholder="What does the document say about pricing?"></textarea>
+          <button id="queryBtn">Run /query</button>
+        </article>
+
+        <article class="card span-12">
+          <h2>Query Results</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Score</th>
+                  <th>Excerpt</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody">
+                <tr>
+                  <td colspan="3" class="muted">No query results yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card span-12">
+          <h2>Response</h2>
+          <pre id="output">Ready.</pre>
+        </article>
+      </section>
+    </main>
+
+    <script src="./ui.js"></script>
+  </body>
+</html>
